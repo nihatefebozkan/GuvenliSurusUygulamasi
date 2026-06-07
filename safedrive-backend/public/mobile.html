@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  SafeDrive Mobil Sensör İstemcisi
+  ============================================================================
+  ÖNEMLİ: Aşağıdaki BACKEND_IP değerini kendi bilgisayarının yerel IP adresiyle
+  değiştir (örn. 192.168.1.45). Telefon ve bilgisayar AYNI Wi-Fi ağında olmalı.
+
+  Bilgisayarın yerel IP'sini bulmak için:
+    - Linux/Mac:  hostname -I   ya da   ifconfig
+    - Windows:    ipconfig  (IPv4 Address satırı)
+
+  Bu tahmini IP otomatik dolduruldu: 192.168.1.143
+  Yanlışsa aşağıdaki BACKEND_IP satırını elle düzelt.
+  ============================================================================
+-->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SafeDrive Mobil</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card2: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --primary: #1a56db;
+      --primary2: #2563eb;
+      --green: #16a34a;
+      --red: #dc2626;
+      --orange: #ea580c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      min-height: 100vh;
+      font-size: 16px;
+    }
+    h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
+    .sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    input, button {
+      font-family: inherit;
+      font-size: 17px;
+      width: 100%;
+      border-radius: 10px;
+      border: none;
+    }
+    input {
+      padding: 14px;
+      background: var(--card2);
+      color: var(--text);
+      margin-bottom: 14px;
+      border: 1px solid #475569;
+    }
+    input:focus { outline: none; border-color: var(--primary2); }
+
+    button {
+      padding: 16px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--primary);
+      margin-bottom: 10px;
+      transition: opacity 0.15s;
+    }
+    button:active { opacity: 0.8; }
+    button:disabled { opacity: 0.5; }
+    .btn-green { background: var(--green); }
+    .btn-red { background: var(--red); }
+    .btn-orange { background: var(--orange); }
+    .btn-gray { background: var(--card2); }
+
+    .error { color: #fca5a5; font-size: 14px; text-align: center; margin-top: 6px; }
+
+    select.select-input {
+      width: 100%;
+      padding: 14px;
+      font-size: 17px;
+      border-radius: 10px;
+      background: var(--card2);
+      color: var(--text);
+      border: 1px solid #475569;
+      margin-bottom: 14px;
+    }
+
+    .switch-line { text-align: center; font-size: 14px; color: var(--muted); margin-top: 14px; }
+    .switch-line a { color: #60a5fa; font-weight: 700; text-decoration: underline; }
+
+    /* Sekmeler */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .tab {
+      flex: 1;
+      width: auto;
+      padding: 14px;
+      background: var(--card);
+      color: var(--muted);
+      border: 1px solid #475569;
+      font-weight: 700;
+      margin-bottom: 0;
+    }
+    .tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .device-box {
+      background: var(--card2);
+      border: 1px solid #475569;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .device-box .dev-id { font-family: monospace; font-size: 13px; color: #94a3b8; word-break: break-all; }
+
+    .hidden { display: none; }
+
+    /* Bağlantı durumu */
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 700;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    .status.on { background: #14532d; color: #4ade80; }
+    .status.off { background: #7f1d1d; color: #fca5a5; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+
+    /* Sensör değerleri */
+    .sensor-block { margin-bottom: 16px; }
+    .sensor-block h3 { font-size: 14px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .vals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .val {
+      background: var(--card2);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .val .k { font-size: 12px; color: var(--muted); }
+    .val .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .gps .vals { grid-template-columns: 1fr 1fr; }
+
+    .sent-info { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8px; }
+    .logout { text-align: center; margin-top: 6px; }
+    .logout a { color: var(--muted); font-size: 14px; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <h1>🚗 SafeDrive Mobil</h1>
+  <div class="sub">Sürücü Sensör Toplayıcı</div>
+
+  <!-- ====================== KİMLİK DOĞRULAMA (SEKMELİ) ====================== -->
+  <div id="authArea">
+    <div class="tabs">
+      <button id="tabLogin" class="tab active">Giriş Yap</button>
+      <button id="tabRegister" class="tab">Kayıt Ol</button>
+    </div>
+
+    <!-- GİRİŞ -->
+    <div id="loginScreen" class="card">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="ornek@test.com" autocomplete="username" />
+      <label>Şifre</label>
+      <input id="password" type="password" placeholder="••••••" autocomplete="current-password" />
+      <button id="loginBtn">Giriş Yap</button>
+      <div id="loginError" class="error"></div>
+    </div>
+
+    <!-- KAYIT -->
+    <div id="registerScreen" class="card hidden">
+      <label>Kullanıcı Adı</label>
+      <input id="regUsername" type="text" placeholder="kullanici_adi" autocomplete="username" />
+      <label>Email</label>
+      <input id="regEmail" type="email" placeholder="ornek@test.com" />
+      <label>Şifre</label>
+      <input id="regPassword" type="password" placeholder="En az 6 karakter" />
+      <label>Şirket</label>
+      <select id="regCompany" class="select-input">
+        <option value="">Şirketler yükleniyor...</option>
+      </select>
+      <button id="registerBtn" class="btn-green">Sürücü Olarak Kayıt Ol</button>
+      <div id="registerError" class="error"></div>
+    </div>
+  </div>
+
+  <!-- ====================== SENSÖR EKRANI ====================== -->
+  <div id="sensorScreen" class="hidden">
+
+    <div id="status" class="status off">
+      <span class="dot"></span><span id="statusText">Durduruldu</span>
+    </div>
+
+    <div class="card">
+      <label>Cihazım (otomatik)</label>
+      <div id="deviceInfo" class="device-box">Cihaz hazırlanıyor...</div>
+
+      <button id="startBtn" class="btn-green">▶ Başlat</button>
+      <button id="stopBtn" class="btn-red hidden">⏹ Durdur</button>
+      <button id="brakeBtn" class="btn-orange">🚨 Ani Fren Simüle Et</button>
+    </div>
+
+    <div class="card">
+      <div class="sensor-block">
+        <h3>İvmeölçer (m/s²)</h3>
+        <div class="vals">
+          <div class="val"><div class="k">X</div><div class="v" id="ax">0.00</div></div>
+          <div class="val"><div class="k">Y</div><div class="v" id="ay">0.00</div></div>
+          <div class="val"><div class="k">Z</div><div class="v" id="az">0.00</div></div>
+        </div>
+      </div>
+
+      <div class="sensor-block">
+        <h3>Jiroskop (°)</h3>
+        <div class="vals">
+          <div class="val"><div class="k">α alpha</div><div class="v" id="ga">0.0</div></div>
+          <div class="val"><div class="k">β beta</div><div class="v" id="gb">0.0</div></div>
+          <div class="val"><div class="k">γ gamma</div><div class="v" id="gg">0.0</div></div>
+        </div>
+      </div>
+
+      <div class="sensor-block gps">
+        <h3>GPS</h3>
+        <div class="vals">
+          <div class="val"><div class="k">Enlem</div><div class="v" id="lat">—</div></div>
+          <div class="val"><div class="k">Boylam</div><div class="v" id="lon">—</div></div>
+          <div class="val"><div class="k">Hız (km/s)</div><div class="v" id="spd">0</div></div>
+          <div class="val"><div class="k">Gönderilen</div><div class="v" id="count">0</div></div>
+        </div>
+        <div id="gpsError" class="error" style="margin-top:8px"></div>
+      </div>
+
+      <div class="sent-info" id="lastSent">Henüz veri gönderilmedi</div>
+    </div>
+
+    <div class="logout"><a id="logoutLink">Çıkış yap</a></div>
+  </div>
+
+  <script>
+    // ========================================================================
+    // BACKEND ADRESİ
+    // Bu sayfa backend tarafından sunulduğu için varsayılan olarak AYNI ORIGIN
+    // kullanılır (deploy sonrası otomatik doğru adres). Yerelde ngrok ile test
+    // ederken aşağıdaki BASE_URL'i ngrok adresinle değiştirebilirsin.
+    // ========================================================================
+    const BASE_URL = window.location.origin;
+    // Örn. yerel ngrok testi için:
+    // const BASE_URL = 'https://xxxx.ngrok-free.dev';
+    // ========================================================================
+
+    const apiHeaders = (extra = {}) => ({
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+      ...extra
+    });
+
+    // --- Element kısayolları ---
+    const $ = (id) => document.getElementById(id);
+
+    // --- Durum ---
+    let token = localStorage.getItem('token') || null;
+    let currentDeviceId = null; // Otomatik hazırlanan cihazın Mongo _id'si
+    let running = false;
+    let sendTimer = null;
+    let geoWatchId = null;
+    let sentCount = 0;
+
+    // Son okunan sensör değerleri
+    const latest = {
+      accelerometer: { x: 0, y: 0, z: 0 },
+      gyroscope: { alpha: 0, beta: 0, gamma: 0 },
+      location: { latitude: null, longitude: null, speed: 0 }
+    };
+
+    // ========================================================================
+    // GİRİŞ
+    // ========================================================================
+    $('loginBtn').addEventListener('click', async () => {
+      const email = $('email').value.trim();
+      const password = $('password').value;
+      $('loginError').textContent = '';
+
+      if (!email || !password) {
+        $('loginError').textContent = 'Email ve şifre gerekli';
+        return;
+      }
+
+      $('loginBtn').disabled = true;
+      $('loginBtn').textContent = 'Giriş yapılıyor...';
+
+      try {
+        const res = await fetch(`${BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Giriş başarısız');
+        }
+
+        token = data.token;
+        localStorage.setItem('token', token);
+        showSensorScreen();
+      } catch (err) {
+        $('loginError').textContent =
+          err.message === 'Failed to fetch'
+            ? 'Sunucuya ulaşılamadı (IP / ağ / backend kontrol et)'
+            : err.message;
+      } finally {
+        $('loginBtn').disabled = false;
+        $('loginBtn').textContent = 'Giriş Yap';
+      }
+    });
+
+    function showSensorScreen() {
+      $('authArea').classList.add('hidden');
+      $('sensorScreen').classList.remove('hidden');
+      // Cihazı otomatik olarak hazırla (oluştur veya mevcut olanı bul)
+      ensureDevice();
+    }
+
+    // ========================================================================
+    // OTOMATİK CİHAZ HAZIRLAMA
+    // Sürücü hiçbir şey yapıştırmaz: telefona özel sabit bir deviceId üretilir,
+    // backend'de yoksa oluşturulur, varsa bulunur; Mongo _id saklanır.
+    // ========================================================================
+    async function ensureDevice() {
+      const startBtn = $('startBtn');
+      const brakeBtn = $('brakeBtn');
+      startBtn.disabled = true;
+      brakeBtn.disabled = true;
+      $('deviceInfo').textContent = 'Cihaz hazırlanıyor...';
+
+      try {
+        // 1) Telefona özel kalıcı deviceId string'i (localStorage'da saklı)
+        let localDeviceId = localStorage.getItem('localDeviceId');
+        if (!localDeviceId) {
+          const rand = Math.random().toString(36).slice(2, 8);
+          localDeviceId = 'mobile-' + rand;
+          localStorage.setItem('localDeviceId', localDeviceId);
+        }
+
+        // 2) Sürücünün mevcut cihazları arasında bu deviceId var mı?
+        const listRes = await fetch(`${BASE_URL}/api/devices`, {
+          headers: apiHeaders({ Authorization: `Bearer ${token}` })
+        });
+        const devices = await listRes.json();
+        let device = Array.isArray(devices)
+          ? devices.find((d) => d.deviceId === localDeviceId)
+          : null;
+
+        // 3) Yoksa oluştur
+        if (!device) {
+          const platform = /android/i.test(navigator.userAgent)
+            ? 'android'
+            : /iphone|ipad|ipod/i.test(navigator.userAgent)
+            ? 'ios'
+            : 'web';
+          const createRes = await fetch(`${BASE_URL}/api/devices`, {
+            method: 'POST',
+            headers: apiHeaders({ Authorization: `Bearer ${token}` }),
+            body: JSON.stringify({
+              deviceId: localDeviceId,
+              model: navigator.platform || 'Mobil',
+              platform
+            })
+          });
+          device = await createRes.json();
+          if (!createRes.ok) {
+            throw new Error(device.error || 'Cihaz oluşturulamadı');
+          }
+        }
+
+        // 4) Mongo _id'yi sakla ve göster
+        currentDeviceId = device._id;
+        $('deviceInfo').innerHTML =
+          `<b>${device.deviceId}</b> (${device.platform || '—'})<br>` +
+          `<span class="dev-id">ID: ${device._id}</span>`;
+        startBtn.disabled = false;
+        brakeBtn.disabled = false;
+      } catch (err) {
+        $('deviceInfo').textContent =
+          'Cihaz hazırlanamadı: ' +
+          (err.message === 'Failed to fetch' ? 'sunucuya ulaşılamadı' : err.message);
+      }
+    }
+
+    // ========================================================================
+    // SEKME GEÇİŞLERİ (Giriş Yap <-> Kayıt Ol)
+    // ========================================================================
+    $('tabLogin').addEventListener('click', () => {
+      $('tabLogin').classList.add('active');
+      $('tabRegister').classList.remove('active');
+      $('loginScreen').classList.remove('hidden');
+      $('registerScreen').classList.add('hidden');
+    });
+    $('tabRegister').addEventListener('click', () => {
+      $('tabRegister').classList.add('active');
+      $('tabLogin').classList.remove('active');
+      $('registerScreen').classList.remove('hidden');
+      $('loginScreen').classList.add('hidden');
+      loadCompanies();
+    });
+
+    // ========================================================================
+    // ŞİRKET LİSTESİ (kayıt formundaki dropdown için)
+    // ========================================================================
+    let companiesLoaded = false;
+    async function loadCompanies() {
+      if (companiesLoaded) return;
+      try {
+        const res = await fetch(`${BASE_URL}/api/companies`, { headers: apiHeaders() });
+        const companies = await res.json();
+        const sel = $('regCompany');
+        if (!Array.isArray(companies) || companies.length === 0) {
+          sel.innerHTML = '<option value="">Kayıtlı şirket yok</option>';
+          return;
+        }
+        sel.innerHTML =
+          '<option value="">Şirket seçin...</option>' +
+          companies.map((c) => `<option value="${c._id}">${c.name}</option>`).join('');
+        companiesLoaded = true;
+      } catch (err) {
+        $('regCompany').innerHTML = '<option value="">Şirketler yüklenemedi</option>';
+      }
+    }
+
+    // ========================================================================
+    // KAYIT OL
+    // ========================================================================
+    $('registerBtn').addEventListener('click', async () => {
+      const username = $('regUsername').value.trim();
+      const email = $('regEmail').value.trim();
+      const password = $('regPassword').value;
+      const companyId = $('regCompany').value;
+      const role = 'driver'; // Mobil uygulama yalnızca sürücü hesabı oluşturur
+      $('registerError').textContent = '';
+
+      if (!username || !email || !password) {
+        $('registerError').textContent = 'Tüm alanları doldurun';
+        return;
+      }
+      if (password.length < 6) {
+        $('registerError').textContent = 'Şifre en az 6 karakter olmalı';
+        return;
+      }
+      if (!companyId) {
+        $('registerError').textContent = 'Lütfen bir şirket seçin';
+        return;
+      }
+
+      $('registerBtn').disabled = true;
+      $('registerBtn').textContent = 'Kaydolunuyor...';
+
+      try {
+        const res = await fetch(`${BASE_URL}/auth/register`, {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ username, email, password, role, companyId })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Kayıt başarısız');
+        }
+
+        // Kayıt sonrası otomatik giriş
+        token = data.token;
+        localStorage.setItem('token', token);
+        showSensorScreen();
+      } catch (err) {
+        $('registerError').textContent =
+          err.message === 'Failed to fetch'
+            ? 'Sunucuya ulaşılamadı (IP / ağ / backend kontrol et)'
+            : err.message;
+      } finally {
+        $('registerBtn').disabled = false;
+        $('registerBtn').textContent = 'Kayıt Ol';
+      }
+    });
+
+    // Sayfa açılışında token varsa direkt sensör ekranı
+    if (token) showSensorScreen();
+
+    // ========================================================================
+    // ÇIKIŞ
+    // ========================================================================
+    $('logoutLink').addEventListener('click', () => {
+      stopReading();
+      localStorage.removeItem('token');
+      token = null;
+      currentDeviceId = null;
+      $('sensorScreen').classList.add('hidden');
+      $('authArea').classList.remove('hidden');
+    });
+
+    // ========================================================================
+    // SENSÖR OKUMA
+    // ========================================================================
+    function onMotion(e) {
+      // accelerationIncludingGravity tercih edilir (z ~ 9.8 olur)
+      const a = e.accelerationIncludingGravity || e.acceleration || {};
+      if (a.x != null) latest.accelerometer.x = a.x;
+      if (a.y != null) latest.accelerometer.y = a.y;
+      if (a.z != null) latest.accelerometer.z = a.z;
+
+      const r = e.rotationRate || {};
+      // rotationRate: alpha=z, beta=x, gamma=y dönüş hızları
+      if (r.alpha != null) latest.gyroscope.alpha = r.alpha;
+      if (r.beta != null) latest.gyroscope.beta = r.beta;
+      if (r.gamma != null) latest.gyroscope.gamma = r.gamma;
+
+      updateSensorUI();
+    }
+
+    function onGeo(pos) {
+      latest.location.latitude = pos.coords.latitude;
+      latest.location.longitude = pos.coords.longitude;
+      // speed m/s -> km/s; null gelebilir
+      const s = pos.coords.speed;
+      latest.location.speed = s != null && s >= 0 ? +(s * 3.6).toFixed(1) : 0;
+      $('gpsError').textContent = '';
+      updateGeoUI();
+    }
+
+    function onGeoError(err) {
+      // Konum alınamazsa kullanıcıya görünür hata göster
+      const map = {
+        1: 'Konum izni reddedildi. Tarayıcı ayarlarından bu siteye konum izni verin.',
+        2: 'Konum alınamıyor (sinyal yok / GPS kapalı).',
+        3: 'Konum zaman aşımına uğradı.'
+      };
+      $('gpsError').textContent =
+        '⚠ ' + (map[err && err.code] || 'Konum alınamadı') + ' Konum boş gönderiliyor.';
+    }
+
+    function updateSensorUI() {
+      $('ax').textContent = latest.accelerometer.x.toFixed(2);
+      $('ay').textContent = latest.accelerometer.y.toFixed(2);
+      $('az').textContent = latest.accelerometer.z.toFixed(2);
+      $('ga').textContent = latest.gyroscope.alpha.toFixed(1);
+      $('gb').textContent = latest.gyroscope.beta.toFixed(1);
+      $('gg').textContent = latest.gyroscope.gamma.toFixed(1);
+    }
+
+    function updateGeoUI() {
+      $('lat').textContent =
+        latest.location.latitude != null ? latest.location.latitude.toFixed(5) : '—';
+      $('lon').textContent =
+        latest.location.longitude != null ? latest.location.longitude.toFixed(5) : '—';
+      $('spd').textContent = latest.location.speed;
+    }
+
+    // ========================================================================
+    // BAŞLAT / DURDUR
+    // ========================================================================
+    $('startBtn').addEventListener('click', startReading);
+    $('stopBtn').addEventListener('click', stopReading);
+
+    async function startReading() {
+      if (!currentDeviceId) {
+        alert('Cihaz henüz hazır değil, lütfen birkaç saniye bekleyin');
+        return;
+      }
+
+      // iOS 13+ için hareket sensörü izni
+      if (
+        typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function'
+      ) {
+        try {
+          const perm = await DeviceMotionEvent.requestPermission();
+          if (perm !== 'granted') {
+            alert('Hareket sensörü izni reddedildi');
+            return;
+          }
+        } catch (err) {
+          alert('Sensör izni alınamadı: ' + err.message);
+          return;
+        }
+      }
+
+      // Hareket sensörü
+      window.addEventListener('devicemotion', onMotion);
+
+      // GPS
+      if (navigator.geolocation) {
+        geoWatchId = navigator.geolocation.watchPosition(onGeo, onGeoError, {
+          enableHighAccuracy: true,
+          maximumAge: 1000,
+          timeout: 10000
+        });
+      }
+
+      // Her 2 saniyede bir gönder
+      sendTimer = setInterval(sendData, 2000);
+
+      running = true;
+      setStatus(true);
+      $('startBtn').classList.add('hidden');
+      $('stopBtn').classList.remove('hidden');
+    }
+
+    function stopReading() {
+      window.removeEventListener('devicemotion', onMotion);
+      if (geoWatchId != null) {
+        navigator.geolocation.clearWatch(geoWatchId);
+        geoWatchId = null;
+      }
+      if (sendTimer) {
+        clearInterval(sendTimer);
+        sendTimer = null;
+      }
+      running = false;
+      setStatus(false);
+      $('startBtn').classList.remove('hidden');
+      $('stopBtn').classList.add('hidden');
+    }
+
+    function setStatus(on) {
+      const el = $('status');
+      if (on) {
+        el.className = 'status on';
+        $('statusText').textContent = 'Bağlı — veri gönderiliyor';
+      } else {
+        el.className = 'status off';
+        $('statusText').textContent = 'Durduruldu';
+      }
+    }
+
+    // ========================================================================
+    // VERİ GÖNDERME
+    // ========================================================================
+    async function postSensorData(payload) {
+      const res = await fetch(`${BASE_URL}/api/sensor-data`, {
+        method: 'POST',
+        headers: apiHeaders({ Authorization: `Bearer ${token}` }),
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    function buildPayload(overrideAccelX) {
+      return {
+        deviceId: currentDeviceId,
+        timestamp: new Date().toISOString(),
+        accelerometer: {
+          x:
+            overrideAccelX != null
+              ? overrideAccelX
+              : +latest.accelerometer.x.toFixed(2),
+          y: +latest.accelerometer.y.toFixed(2),
+          z: +latest.accelerometer.z.toFixed(2)
+        },
+        gyroscope: {
+          alpha: +latest.gyroscope.alpha.toFixed(2),
+          beta: +latest.gyroscope.beta.toFixed(2),
+          gamma: +latest.gyroscope.gamma.toFixed(2)
+        },
+        location: {
+          latitude: latest.location.latitude,
+          longitude: latest.location.longitude,
+          speed: latest.location.speed
+        }
+      };
+    }
+
+    async function sendData() {
+      try {
+        await postSensorData(buildPayload());
+        sentCount++;
+        $('count').textContent = sentCount;
+        $('lastSent').textContent =
+          'Son gönderim: ' + new Date().toLocaleTimeString('tr-TR');
+      } catch (err) {
+        $('lastSent').textContent = 'Gönderim hatası: ' + err.message;
+      }
+    }
+
+    // ========================================================================
+    // ANİ FREN SİMÜLASYONU (demo)
+    // ========================================================================
+    $('brakeBtn').addEventListener('click', async () => {
+      if (!token) {
+        alert('Önce giriş yapın');
+        return;
+      }
+      if (!currentDeviceId) {
+        alert('Cihaz henüz hazır değil, lütfen birkaç saniye bekleyin');
+        return;
+      }
+
+      $('brakeBtn').disabled = true;
+      try {
+        await postSensorData(buildPayload(-10)); // accelerometer.x = -10 -> HARD_BRAKE
+        sentCount++;
+        $('count').textContent = sentCount;
+        $('lastSent').textContent = '🚨 Ani fren verisi gönderildi (x = -10)';
+      } catch (err) {
+        $('lastSent').textContent = 'Demo hatası: ' + err.message;
+      } finally {
+        $('brakeBtn').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

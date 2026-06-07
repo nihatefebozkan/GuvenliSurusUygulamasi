@@ -1,0 +1,22 @@
+# Bağımlılıklar
+node_modules/
+**/node_modules/
+
+# Ortam değişkenleri (gizli)
+.env
+**/.env
+
+# Build çıktıları
+dist/
+**/dist/
+
+# Loglar
+*.log
+npm-debug.log*
+
+# Editör / OS
+.DS_Store
+.vscode/
+
+# Claude Code yerel ayarları
+.claude/

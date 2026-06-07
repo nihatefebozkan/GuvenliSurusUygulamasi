@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeDrive - Canlı Panel</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .status.on { background: #14532d; color: #4ade80; }
+    .status.off { background: #7f1d1d; color: #fca5a5; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .card h2 { font-size: 15px; margin: 0 0 12px; color: #94a3b8; }
+    .item {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      animation: flash 0.6s ease;
+    }
+    @keyframes flash { from { background: #334155; } to { background: #0f172a; } }
+    .alarm { border-left: 4px solid #f87171; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .critical { background: #7f1d1d; color: #fecaca; }
+    .high { background: #7c2d12; color: #fed7aa; }
+    .medium { background: #713f12; color: #fde68a; }
+    .low { background: #1e3a8a; color: #bfdbfe; }
+    .time { color: #64748b; font-size: 11px; }
+    .empty { color: #64748b; font-style: italic; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>🚗 SafeDrive Canlı Panel</h1>
+  <span id="status" class="status off">Bağlanıyor...</span>
+
+  <div class="grid">
+    <div class="card">
+      <h2>📡 Gelen Sensör Verileri (newData)</h2>
+      <div id="data"><div class="empty">Henüz veri yok...</div></div>
+    </div>
+    <div class="card">
+      <h2>🚨 Alarmlar (newAlarm)</h2>
+      <div id="alarms"><div class="empty">Henüz alarm yok...</div></div>
+    </div>
+  </div>
+
+  <!-- Socket.io istemcisi (CDN) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const SERVER = 'http://localhost:5000';
+    const socket = io(SERVER);
+
+    const statusEl = document.getElementById('status');
+    const dataEl = document.getElementById('data');
+    const alarmsEl = document.getElementById('alarms');
+
+    socket.on('connect', () => {
+      statusEl.textContent = '🟢 Bağlandı (' + socket.id + ')';
+      statusEl.className = 'status on';
+    });
+
+    socket.on('disconnect', () => {
+      statusEl.textContent = '🔴 Bağlantı koptu';
+      statusEl.className = 'status off';
+    });
+
+    function clearEmpty(container) {
+      const empty = container.querySelector('.empty');
+      if (empty) empty.remove();
+    }
+
+    function fmt(d) {
+      return new Date(d).toLocaleTimeString('tr-TR');
+    }
+
+    // Yeni sensör verisi
+    socket.on('newData', (d) => {
+      clearEmpty(dataEl);
+      const a = d.accelerometer || {};
+      const loc = d.location || {};
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML =
+        '<span class="time">' + fmt(d.timestamp) + '</span><br>' +
+        'accel.x: <b>' + a.x + '</b> &nbsp; hız: <b>' + (loc.speed ?? '-') + '</b> km/s';
+      dataEl.prepend(div);
+    });
+
+    // Yeni alarm
+    socket.on('newAlarm', (al) => {
+      clearEmpty(alarmsEl);
+      const div = document.createElement('div');
+      div.className = 'item alarm';
+      div.innerHTML =
+        '<span class="badge ' + al.severity + '">' + al.severity.toUpperCase() + '</span>' +
+        '<b>' + al.type + '</b><br>' +
+        '<span class="time">değer: ' + al.value + ' • ' + fmt(al.timestamp) + '</span>';
+      alarmsEl.prepend(div);
+    });
+  </script>
+</body>
+</html>
